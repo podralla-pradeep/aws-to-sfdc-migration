@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<flow name="aws-to-sfdc-migration-flow" doc:id="afec0630-8cf5-4d9a-a105-2983ee1983c0" >
+		<s3:new-object-listener doc:name="On New Object" doc:id="410338d1-939e-4872-8d3c-0f35e1df97f2" config-ref="Amazon_S3_Configuration" bucketName="pradeepreddy">
+			<scheduling-strategy >
+				<fixed-frequency frequency="30000" />
+			</scheduling-strategy>
+		</s3:new-object-listener>
+		<ee:transform doc:name="Object key" doc:id="74bd15a6-28f8-4ab5-88d1-be928e80d25e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<s3:get-object doc:name="Get Object" doc:id="ddfc00dd-020e-4210-b9cc-ef65946a4ea3" config-ref="Amazon_S3_Configuration" bucketName="pradeepreddy" key="#[output application/java&#10;---&#10;payload.key]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="9e7041e4-b03d-436e-85fc-fef947b80bf4" message="#[payload]"/>
+		<ee:transform doc:name="SF request payload" doc:id="5ca80886-30d6-4a40-9bca-adc957a1b185" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+read(payload, 'application/csv') map ((item, index) -> {
+
+	"Name": item.CUSTOMER_NAME,
+	"age__c": item.AGE,
+	"sex__c": item.SEX,
+
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<parallel-foreach doc:name="Parallel For Each" doc:id="0354c352-d6fa-4d3f-9ca9-b59fab85b20d" collection="#[payload]">
+			<salesforce:upsert objectType="Pradeep__c" externalIdFieldName="Id" doc:name="Upsert" doc:id="b0d584b0-aca4-4d74-bcb5-46f2ea0507d1" config-ref="Salesforce_Config">
+				<salesforce:records><![CDATA[#[output application/java
+---
+[payload]]]]></salesforce:records>
+		</salesforce:upsert>
+		</parallel-foreach>
+		<ee:transform doc:name="SF Response" doc:id="cfab794f-60b6-4bf9-81ed-73cd4482dffb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="16e05e16-6002-462b-b661-b628fc1d0dfd" message="#[payload]"/>
+	</flow>
+</mule>

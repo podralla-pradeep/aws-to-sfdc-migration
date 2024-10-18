@@ -1,0 +1,8 @@
+aws.accessKey: "![ZzXhK9XltnOyJL40+J6k6OJ2xK8mCkIc]"
+aws.secretKey: "![kUAYDIir7E41/ZMdcbDAJmIY4ID/R9C7plzEvvtbLuA1eJWSurhZzL8ba+KtZ/kD]"
+aws.region: "ap-southeast-2"
+sfdc.username: "podrallapradeepreddy@gmail.com"
+sfdc.password: "Chinna@4567"
+sfdc.securityToken: "![TRykxX3sE7DZn7sXJeREbpXxgLeyVVN/B+/s96QCTMI=]"
+sfdc.url: "https://login.salesforce.com/services/Soap/u/60.0"
+http.port: "8082"

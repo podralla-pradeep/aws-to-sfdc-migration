@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="delete-rows-in-sfdcFlow" doc:id="0d433cee-8b5d-4e8a-84d6-42c5eb7517d4" >
+		<http:listener doc:name="Listener" doc:id="4f6ea8fc-6f6e-46ef-b631-d3e654c947e4" config-ref="HTTP_Listener_config" path="/sfdc/delete" allowedMethods="DELETE"/>
+		<logger level="INFO" doc:name="Logger" doc:id="64f00b76-3ebd-4e3b-a05d-703b2d54d618" message="delete-rows-in-sfdc Flow started!!!!"/>
+		<salesforce:query doc:name="Query" doc:id="d66f3a0f-4106-4ed1-bef3-49d4eff04873" config-ref="Salesforce_Config" target="sfdcIds">
+			<salesforce:salesforce-query><![CDATA[SELECT Id FROM Pradeep__c]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<set-payload value="#[vars.sfdcIds]" doc:name="Set Payload" doc:id="b1f7df7f-3222-439c-ba78-f75cf0f4a685" />
+		<batch:job jobName="delete-rows-in-sfdcBatch_Job" doc:id="b40f82fc-4454-4bdc-84e1-3dce99ce3e4a" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="af45243a-51f0-4d8c-ac3e-92e779b3003a" >
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="8da39ab5-429d-4abe-9f65-fdcb4a7d21c6" size="200">
+						<salesforce:delete doc:name="Delete" doc:id="7f084e56-6353-4031-88bd-f1ab513f6535" config-ref="Salesforce_Config">
+			<salesforce:ids><![CDATA[#[payload.Id]]]></salesforce:ids>
+		</salesforce:delete>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<ee:transform doc:name="Transform Message" doc:id="7c3010fc-2617-49b1-9d6a-a2ba2277d0fc" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="7a21f806-a008-40fc-b581-c1cf3227e080" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
+		<ee:transform doc:name="Transform Message" doc:id="07cc3f6e-0e74-4619-9abd-e9e53fbb7ea7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "SFDC rows deleted successfully",
+	"DeletedRows": sizeOf(vars.sfdcIds.Id default [])
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
